@@ -1,4 +1,4 @@
-package com.mohamedabdelazeim.zekr.ui.prayer
+package com.mohamedabdelazeitm.zekr.ui.prayer
 
 import android.content.Context
 import android.location.Geocoder
@@ -6,10 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.batoulapps.adhan.*
 import com.batoulapps.adhan.data.DateComponents
-import com.mohamedabdelazeim.zekr.data.local.PrayerTimesDao
-import com.mohamedabdelazeim.zekr.data.local.PrayerTimesEntity
-import com.mohamedabdelazeim.zekr.data.repository.LocationRepository
-import com.mohamedabdelazeim.zekr.data.repository.SettingsRepository
+import com.mohamedabdelazeitm.zekr.data.local.PrayerTimesDao
+import com.mohamedabdelazeitm.zekr.data.local.PrayerTimesEntity
+import com.mohamedabdelazeitm.zekr.data.repository.LocationRepository
+import com.mohamedabdelazeitm.zekr.data.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
@@ -37,21 +37,7 @@ class PrayerViewModel @Inject constructor(
     private val gregorianDateFormat = SimpleDateFormat("dd MMMM yyyy", Locale("ar"))
 
     init {
-        loadSavedLocation()
-    }
-
-    private fun loadSavedLocation() {
-        viewModelScope.launch {
-            locationRepository.getSavedLocation().collect { location ->
-                if (location != null) {
-                    _locationState.value = LocationState(
-                        locationName = location.locationName,
-                        latitude = location.latitude,
-                        longitude = location.longitude
-                    )
-                }
-            }
-        }
+        loadPrayerTimes()
     }
 
     fun loadPrayerTimes() {
@@ -73,7 +59,6 @@ class PrayerViewModel @Inject constructor(
                 val prayers = calculatePrayerTimes(location.latitude, location.longitude)
                 val hijriDate = getHijriDate()
                 val gregorianDate = gregorianDateFormat.format(Date())
-
                 val nextPrayer = findNextPrayer(prayers)
 
                 _prayerState.value = PrayerState(
@@ -104,36 +89,19 @@ class PrayerViewModel @Inject constructor(
         val date = DateComponents.from(Date())
         val calculationMethod = settingsRepository.getCalculationMethod()
 
-        val params = CalculationMethod.valueOf(calculationMethod).params
+        // ✅ FIX: .params → .parameters
+        val params = CalculationMethod.valueOf(calculationMethod).parameters
         params.madhab = Madhab.SHAFI
 
         val prayerTimes = PrayerTimes(coordinates, date, params)
 
         return listOf(
-            PrayerItem(
-                name = "الفجر",
-                time = dateFormat.format(prayerTimes.fajr)
-            ),
-            PrayerItem(
-                name = "الشروق",
-                time = dateFormat.format(prayerTimes.sunrise)
-            ),
-            PrayerItem(
-                name = "الظهر",
-                time = dateFormat.format(prayerTimes.dhuhr)
-            ),
-            PrayerItem(
-                name = "العصر",
-                time = dateFormat.format(prayerTimes.asr)
-            ),
-            PrayerItem(
-                name = "المغرب",
-                time = dateFormat.format(prayerTimes.maghrib)
-            ),
-            PrayerItem(
-                name = "العشاء",
-                time = dateFormat.format(prayerTimes.isha)
-            )
+            PrayerItem(name = "الفجر",   time = dateFormat.format(prayerTimes.fajr)),
+            PrayerItem(name = "الشروق",  time = dateFormat.format(prayerTimes.sunrise)),
+            PrayerItem(name = "الظهر",   time = dateFormat.format(prayerTimes.dhuhr)),
+            PrayerItem(name = "العصر",   time = dateFormat.format(prayerTimes.asr)),
+            PrayerItem(name = "المغرب",  time = dateFormat.format(prayerTimes.maghrib)),
+            PrayerItem(name = "العشاء",  time = dateFormat.format(prayerTimes.isha))
         )
     }
 
@@ -143,7 +111,7 @@ class PrayerViewModel @Inject constructor(
 
         return prayers.firstOrNull { prayer ->
             prayer.time > currentTime
-        } ?: prayers.firstOrNull()?.copy(name = "${prayers.first().name} (غداً)")
+        } ?: prayers.firstOrNull()?.copy(name = "${prayers.first().name} (غدا)")
     }
 
     private fun getLocationName(latitude: Double, longitude: Double): String {
@@ -172,7 +140,7 @@ class PrayerViewModel @Inject constructor(
 
             val monthNames = arrayOf(
                 "محرم", "صفر", "ربيع الأول", "ربيع الثاني",
-                "جمادى الأولى", "جمادى الآخرة", "رجب", "شعبان",
+                "جمادى الأولى", "جمادى الأخرة", "رجب", "شعبان",
                 "رمضان", "شوال", "ذو القعدة", "ذو الحجة"
             )
 
