@@ -1,27 +1,22 @@
-name: Android CI
+name: Build & Release APK
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v3
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - run: chmod +x gradlew
 
       - name: Fix Gradle Wrapper JAR
         run: |
@@ -30,26 +25,31 @@ jobs:
 
       - name: Generate Keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/release.keystore
+          keytool -genkeypair \
+            -alias elasalaty \
+            -keyalg RSA -keysize 2048 \
+            -validity 9125 \
+            -keystore elasalaty.jks \
+            -storepass elasalaty123 \
+            -keypass elasalaty123 \
+            -dname "CN=ElaSalaty,O=Islamic,C=EG" \
+            -noprompt
 
-      - name: Build Release APK
+      - name: Build APK
         run: |
           ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/app/release.keystore \
-            -Pandroid.injected.signing.store.password=${{ secrets.KEY_STORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-apk
-          path: app/build/outputs/apk/release/*.apk
+            -Pandroid.injected.signing.store.file=${{ github.workspace }}/elasalaty.jks \
+            -Pandroid.injected.signing.store.password=elasalaty123 \
+            -Pandroid.injected.signing.key.alias=elasalaty \
+            -Pandroid.injected.signing.key.password=elasalaty123
 
       - name: Create Release with APK
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
+          tag_name: "build-${{ github.run_number }}"
+          name: "إلى الصلاة - إصدار ${{ github.run_number }}"
           files: app/build/outputs/apk/release/*.apk
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
